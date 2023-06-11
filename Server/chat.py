@@ -50,7 +50,7 @@ class Chat:
     # Region ============================= Load User Data =============================
     def load_user_data(self):
         try:
-            with open('./db/user.json', 'r') as file:
+            with open('./Server/db/user.json', 'r') as file:
                 self.users = json.load(file)
         except FileNotFoundError:
             self.users = {}
@@ -58,7 +58,7 @@ class Chat:
 
     # Region ============================= Save User to JSON =============================
     def save_user_data(self):
-        with open('./db/user.json', 'w') as file:
+        with open('./Server/db/user.json', 'w') as file:
             json.dump(self.users, file, indent=4)
     # End Region ============================= Save User to JSON =============================
     
@@ -296,7 +296,7 @@ class Chat:
 
         # Save new user to user.json file
         try:
-            with open('./db/user.json', 'r+') as file:
+            with open('./Server/db/user.json', 'r+') as file:
                 data = json.load(file)
                 data[username] = new_user
                 file.seek(0)
