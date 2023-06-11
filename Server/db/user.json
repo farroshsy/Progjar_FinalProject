@@ -33,5 +33,19 @@
         "password": "farros123",
         "incoming": {},
         "outgoing": {}
+    },
+    "rachel": {
+        "nama": "RachelQiuQiu",
+        "negara": "Indonesia",
+        "password": "pwd",
+        "incoming": {},
+        "outgoing": {}
+    },
+    "farrostest": {
+        "nama": "Farros",
+        "negara": "Hilmi",
+        "password": "pwd",
+        "incoming": {},
+        "outgoing": {}
     }
 }

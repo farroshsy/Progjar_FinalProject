@@ -194,16 +194,27 @@ class ChatClient:
             return "Error, {}" . format(result['message'])
         
     def sendmessage(self, usernameto="xxx", message="xxx"):
-        if (self.tokenid == ""):
+        if self.tokenid == "":
             return "Error, not authorized"
-        string = "send {} {} {} \r\n" . format(
-            self.tokenid, usernameto, message)
-        print(string)
+        
+        # Replacing emoticons
+        emoticon_mapping = {
+            ":)": "🙂",
+            ":(": "☹️",
+            ":D": "😁",
+            "T_T": "😭",
+        }
+        for emoticon, replacement in emoticon_mapping.items():
+            if emoticon in message:
+                message = message.replace(emoticon, replacement)
+
+        string = "send {} {} {} \r\n".format(self.tokenid, usernameto, message)
         result = self.sendstring(string)
-        if result['status'] == 'OK':
-            return "message sent to {}" . format(usernameto)
+        
+        if result["status"] == "OK":
+            return "Message sent to {}".format(usernameto)
         else:
-            return "Error, {}" . format(result['message'])
+            return "Error: {}".format(result["message"])
 
     def send_private_realm_message(self, realm_name, username_dest, message):
         if self.token_id == "":
@@ -374,14 +385,28 @@ class ChatClient:
             return "Error: {}".format(result['message'])
 
     def inbox(self):
-        if (self.tokenid == ""):
+        if self.tokenid == "":
             return "Error, not authorized"
-        string = "inbox {} \r\n" . format(self.tokenid)
+
+        string = "inbox {} \r\n".format(self.tokenid)
         result = self.sendstring(string)
+
         if result['status'] == 'OK':
-            return "{}" . format(json.dumps(result['messages']))
+            messages = result['messages']
+            emoji_mapping = {
+                "\ud83d\ude42": "🙂",
+                "\ud83d\ude01": "😁",
+                "\u2639\ufe0f": "☹️",
+                "\ud83d\ude2d": "😭"
+            }
+            for user, msgs in messages.items():
+                for msg in msgs:
+                    for emoji, replacement in emoji_mapping.items():
+                        msg['msg'] = msg['msg'].replace(emoji, replacement)
+
+            return messages
         else:
-            return "Error, {}" . format(result['message'])
+            return "Error, {}".format(result['message'])
         
     def get_realm_inbox(self, realm_name):
         if self.token_id == "":
