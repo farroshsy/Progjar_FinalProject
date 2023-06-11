@@ -42,13 +42,33 @@ class ChatClient:
                 filepath = j[2].strip()
                 return self.send_file(usernameto, filepath)
             
+            elif command == 'creategroup':
+                group_name = j[1].strip()
+                return self.create_group(group_name)
+            
+            elif command == 'getgroup':
+                return self.get_group()
+
+            elif command == 'joingroup':
+                group_name = j[1].strip()
+                return self.join_group(group_name)
+
+            elif command == 'exitgroup':
+                group_name = j[1].strip()
+                return self.exit_group(group_name)
+
+            elif command == 'invitegroup':
+                group_name = j[1].strip()
+                username = j[2].strip()
+                return self.invite_group(group_name, username)
+
             elif (command == 'sendgroup'):
                 usernamesto = j[1].strip()
                 message = ""
                 for w in j[2:]:
                     message = "{} {}" . format(message, w)
                 return self.send_group_message(usernamesto, message)
-            
+           
             elif (command == 'sendgroupfile'):
                 usernamesto = j[1].strip()
                 filepath = j[2].strip()
@@ -108,6 +128,9 @@ class ChatClient:
             elif (command == 'getrealminbox'):
                 realm_name = j[1].strip()
                 return self.get_realm_inbox(realm_name)
+            
+            elif command == 'getnotifications':
+                return self.get_notifications()
             
             else:
                 return "*Maaf, command tidak benar"
@@ -209,6 +232,77 @@ class ChatClient:
             return "File sent to realm {}".format(realm_name)
         else:
             return "Error: {}".format(result['message'])
+
+    def create_group(self, group_name):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"creategroup {self.tokenid} {group_name}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Group '{group_name}' created successfully"
+        else:
+            return f"Error, {result['message']}"
+
+
+    def get_group(self):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"getgroup {self.tokenid}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Groups: {', '.join(result['groups'])}"
+        else:
+            return f"Error, {result['message']}"
+
+
+    def join_group(self, group_name):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"joingroup {self.tokenid} {group_name}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Joined group '{group_name}' successfully"
+        else:
+            return f"Error, {result['message']}"
+
+
+    def exit_group(self, group_name):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"exitgroup {self.tokenid} {group_name}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Exited group '{group_name}' successfully"
+        else:
+            return f"Error, {result['message']}"
+
+
+    def invite_group(self, group_name, username):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"invitegroup {self.tokenid} {group_name} {username}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Invited user '{username}' to group '{group_name}' successfully"
+        else:
+            return f"Error, {result['message']}"
+
+
+    def get_notifications(self):
+        if self.tokenid == "":
+            return "Error, not authorized"
+
+        string = f"getnotifications {self.tokenid}\r\n"
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return f"Unopened message notifications: {result['notifications']}"
+        else:
+            return f"Error, {result['message']}"
 
     def send_group_message(self, usernames_to="xxx", message="xxx"):
         if (self.tokenid == ""):
