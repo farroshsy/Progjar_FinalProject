@@ -17,23 +17,47 @@ class RealmCommunicationThread(threading.Thread):
         self.target_realm_address = target_realm_address
         self.target_realm_port = target_realm_port
         self.queue = Queue()  # Queue for outgoing messages to the other realm
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = None
         threading.Thread.__init__(self)
 
+    @property
+    def queue(self):
+        return self._queue
+    
+    def connect(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.sock.connect(
+                (self.target_realm_address, self.target_realm_port))
+            return True
+        except socket.error:
+            return False
+
     def run(self):
-        self.sock.connect((self.target_realm_address, self.target_realm_port))
-        while True:
-            # Menerima data dari realm lain
-            data = self.sock.recv(1024)
-            if data:
-                command = data.decode()
-                response = self.chat.proses(command)
-                # Mengirim balasan ke realm lain
-                self.sock.sendall(json.dumps(response).encode())
-            # Check if there are messages to be sent
-            while not self.queue.empty():
-                msg = self.queue.get()
-                self.sock.sendall(json.dumps(msg).encode())
+        if not self.sock:
+            return
+
+        try:
+            while True:
+                # Receiving data from the other realm
+                data = self.sock.recv(1024)
+                if data:
+                    command = data.decode()
+                    response = self.chat.proses(command)
+                    # Sending a response to the other realm
+                    self.sock.sendall(json.dumps(response).encode())
+
+                # Check if there are messages to be sent
+                while not self.queue.empty():
+                    msg = self.queue.get()
+                    self.sock.sendall(json.dumps(msg).encode())
+
+        except socket.error:
+            # Handle socket errors here
+            print("Socket error occurred")
+        finally:
+            # Close the socket when the thread ends or an error occurs
+            self.sock.close()
 
     def put(self, msg):
         self.queue.put(msg)
@@ -80,12 +104,14 @@ class Chat:
                 country = j[4].strip()
                 logging.warning("REGISTER: register {} {} {} {}" . format(username, password, name, country))
                 return self.register_user(username, password, name, country)
+            
             elif (command == 'auth'):
                 username = j[1].strip()
                 password = j[2].strip()
                 logging.warning(
                     "AUTH: auth {} {}" . format(username, password))
                 return self.autentikasi_user(username, password)
+            
             elif (command == 'send'):
                 sessionid = j[1].strip()
                 usernameto = j[2].strip()
@@ -96,11 +122,13 @@ class Chat:
                 logging.warning("SEND: session {} send message from {} to {}" . format(
                     sessionid, usernamefrom, usernameto))
                 return self.send_message(sessionid, usernamefrom, usernameto, message)
+            
             elif (command == 'inbox'):
                 sessionid = j[1].strip()
                 username = self.sessions[sessionid]['username']
                 logging.warning("INBOX: {}" . format(sessionid))
                 return self.get_inbox(username)
+            
             elif (command == 'sendgroup'):
                 sessionid = j[1].strip()
                 group_usernames = j[2].strip().split(',')
@@ -111,6 +139,7 @@ class Chat:
                 logging.warning("SEND: session {} send message from {} to {}" . format(
                     sessionid, usernamefrom, group_usernames))
                 return self.send_group_message(sessionid, usernamefrom, group_usernames, message)
+            
             elif (command == 'sendfile'):
                 sessionid = j[1].strip()
                 usernameto = j[2].strip()
@@ -120,6 +149,7 @@ class Chat:
                 logging.warning("SENDFILE: session {} send file from {} to {}" . format(
                     sessionid, usernamefrom, usernameto))
                 return self.send_file(sessionid, usernamefrom, usernameto, filepath, encoded_file)
+            
             elif (command == 'sendgroupfile'):
                 sessionid = j[1].strip()
                 usernamesto = j[2].strip().split(',')
@@ -129,152 +159,165 @@ class Chat:
                 logging.warning("SENDGROUPFILE: session {} send file from {} to {}" . format(
                     sessionid, usernamefrom, usernamesto))
                 return self.send_group_file(sessionid, usernamefrom, usernamesto, filepath, encoded_file)
+            
             elif command == 'getpresence':
                 username = j[1].strip()
                 logging.warning("GETPRESENCE: get presence for user {}".format(username))
                 return self.get_presence(username)
+            
             elif command == 'deletelastmessage':
                 username = j[1].strip()
                 result = self.delete_last_message(username)
                 logging.warning("DELETELASTMESSAGE: delete last message for user {}".format(username))
                 return result
+            
             elif command == 'forwardmessage':
                 source_username = j[1].strip()
                 destination_username = j[2].strip()
                 result = self.forward_message(source_username, destination_username)
                 logging.warning("FORWARDMESSAGE: forward message from {} to {}".format(source_username, destination_username))
                 return result
+            
             elif command == 'replymessage':
                 username = j[1].strip()
                 message = ' '.join(j[2:]).strip()
                 result = self.reply_message(username, message)
                 logging.warning("REPLYMESSAGE: reply message for user {}".format(username))
                 return result
+            
             elif (command == 'realm'):
                 realm_id = j[1].strip()
                 if realm_id in self.realms:
                     return self.realms[realm_id].proses(" ".join(j[2:]))
                 else:
                     return {'status': 'ERROR', 'message': 'Realm Tidak Ada'}
+                
             elif (command == 'addrealm'):
-                realm_id = j[1].strip()
-                target_realm_address = j[2].strip()
-                target_realm_port = int(j[3].strip())
-                self.add_realm(realm_id, target_realm_address,
-                               target_realm_port)
+                realm_name = j[1].strip()
+                ipaddress_dest = j[2].strip()
+                port_dest = int(j[3].strip())
+                self.add_realm(realm_name, ipaddress_dest, port_dest)
                 return {'status': 'OK'}
+            
             elif (command == 'recvrealm'):
-                realm_id = j[1].strip()
-                realm_dest_address = j[2].strip()
-                realm_dest_port = int(j[3].strip())
-                return self.recv_realm(realm_id, realm_dest_address, realm_dest_port, data)
-            elif (command == 'sendrealm'):
+                realm_name = j[1].strip()
+                ipaddress_dest = j[2].strip()
+                port_dest = int(j[3].strip())
+                return self.recv_realm(realm_name, ipaddress_dest, port_dest, data)
+            
+            elif command == 'removerealm':
+                realm_name = j[1].strip()
+                return self.remove_realm(realm_name)
+
+            elif command == 'sendrealm':
                 sessionid = j[1].strip()
-                realm_id = j[2].strip()
-                usernameto = j[3].strip()
-                message = ""
-                for w in j[4:]:
-                    message = "{} {}".format(message, w)
-                logging.warning("SENDREALM: session {} send message from {} to {} in realm {}".format(
-                    sessionid, self.sessions[sessionid]['username'], usernameto, realm_id))
-                return self.send_realm_message(sessionid, realm_id, usernameto, message)
-            elif (command == 'sendprivaterealm'):
+                realm_name = j[2].strip()
+                username_dest = j[3].strip()
+                message = " ".join(j[4:])
+                logging.warning("SENDREALM: session {} sends a message from {} to {} in realm {}".format(
+                    sessionid, self.sessions[sessionid]['username'], username_dest, realm_name))
+                return self.send_realm_message(sessionid, realm_name, username_dest, message)
+
+            elif command == 'sendprivaterealm':
                 sessionid = j[1].strip()
-                realm_id = j[2].strip()
-                usernameto = j[3].strip()
-                message = ""
-                for w in j[4:]:
-                    message = "{} {}".format(message, w)
-                print(message)
-                usernamefrom = self.sessions[sessionid]['username']
-                logging.warning("SENDPRIVATEREALM: session {} send message from {} to {} in realm {}".format(
-                    sessionid, usernamefrom, usernameto, realm_id))
-                return self.send_realm_message(sessionid, realm_id, usernamefrom, usernameto, message, data)
-            elif (command == 'recvrealmprivatemsg'):
-                usernamefrom = j[1].strip()
-                realm_id = j[2].strip()
-                usernameto = j[3].strip()
-                message = ""
-                for w in j[4:]:
-                    message = "{} {}".format(message, w)
-                print(message)
-                logging.warning("RECVREALMPRIVATEMSG: recieve message from {} to {} in realm {}".format(
-                    usernamefrom, usernameto, realm_id))
-                return self.recv_realm_message(realm_id, usernamefrom, usernameto, message, data)
-            elif (command == 'sendfilerealm'):
+                realm_name = j[2].strip()
+                username_dest = j[3].strip()
+                message = " ".join(j[4:])
+                username_from = self.sessions[sessionid]['username']
+                logging.warning("SENDPRIVATEREALM: session {} sends a message from {} to {} in realm {}".format(
+                    sessionid, username_from, username_dest, realm_name))
+                return self.send_realm_message(sessionid, realm_name, username_dest, message)
+
+            elif command == 'recvrealmprivatemsg':
+                username_from = j[1].strip()
+                realm_name = j[2].strip()
+                username_dest = j[3].strip()
+                message = " ".join(j[4:])
+                logging.warning("RECVREALMPRIVATEMSG: received message from {} to {} in realm {}".format(
+                    username_from, username_dest, realm_name))
+                return self.recv_realm_message(realm_name, username_from, username_dest, message, data)
+  
+            elif command == 'sendfilerealm':
                 sessionid = j[1].strip()
-                realm_id = j[2].strip()
-                usernameto = j[3].strip()
-                filepath = j[4].strip()
+                realm_name = j[2].strip()
+                username_dest = j[3].strip()
+                file_path = j[4].strip()
                 encoded_file = j[5].strip()
-                usernamefrom = self.sessions[sessionid]['username']
-                logging.warning("SENDFILEREALM: session {} send file from {} to {} in realm {}".format(
-                    sessionid, usernamefrom, usernameto, realm_id))
-                return self.send_file_realm(sessionid, realm_id, usernamefrom, usernameto, filepath, encoded_file, data)
-            elif (command == 'recvfilerealm'):
-                usernamefrom = j[1].strip()
-                realm_id = j[2].strip()
-                usernameto = j[3].strip()
-                filepath = j[4].strip()
+                username_depart = self.sessions[sessionid]['username']
+                logging.warning("SENDFILEREALM: session {} sends a file from {} to {} in realm {}".format(
+                    sessionid, username_depart, username_dest, realm_name))
+                return self.send_file_realm(sessionid, realm_name, username_depart, username_dest, file_path, encoded_file, data)
+
+
+            elif command == 'recvfilerealm':
+                username_depart = j[1].strip()
+                realm_name = j[2].strip()
+                username_dest = j[3].strip()
+                file_path = j[4].strip()
                 encoded_file = j[5].strip()
-                logging.warning("RECVFILEREALM: recieve file from {} to {} in realm {}".format(
-                    usernamefrom, usernameto, realm_id))
-                return self.recv_file_realm(realm_id, usernamefrom, usernameto, filepath, encoded_file, data)
-            elif (command == 'sendgrouprealm'):
+                logging.warning("RECVFILEREALM: received file from {} to {} in realm {}".format(
+                    username_depart, username_dest, realm_name))
+                return self.recv_file_realm(realm_name, username_depart, username_dest, file_path, encoded_file, data)
+
+            elif command == 'sendgrouprealm':
                 sessionid = j[1].strip()
-                realm_id = j[2].strip()
-                usernamesto = j[3].strip().split(',')
-                message = ""
-                for w in j[4:]:
-                    message = "{} {}".format(message, w)
-                usernamefrom = self.sessions[sessionid]['username']
-                logging.warning("SENDGROUPREALM: session {} send message from {} to {} in realm {}".format(
-                    sessionid, usernamefrom, usernamesto, realm_id))
-                return self.send_group_realm_message(sessionid, realm_id, usernamefrom, usernamesto, message, data)
-            elif (command == 'recvrealmgroupmsg'):
-                usernamefrom = j[1].strip()
-                realm_id = j[2].strip()
-                usernamesto = j[3].strip().split(',')
-                message = ""
-                for w in j[4:]:
-                    message = "{} {}".format(message, w)
-                logging.warning("RECVGROUPREALM: send message from {} to {} in realm {}".format(
-                    usernamefrom, usernamesto, realm_id))
-                return self.recv_group_realm_message(realm_id, usernamefrom, usernamesto, message, data)
-            elif (command == 'sendgroupfilerealm'):
+                realm_name = j[2].strip()
+                usernames_dest = j[3].strip().split(',')
+                message = " ".join(j[4:])
+                username_depart = self.sessions[sessionid]['username']
+                logging.warning("SENDGROUPREALM: session {} sends a message from {} to {} in realm {}".format(
+                    sessionid, username_depart, usernames_dest, realm_name))
+                return self.send_group_realm_message(sessionid, realm_name, username_depart, usernames_dest, message, data)
+
+            elif command == 'recvrealmgroupmsg':
+                username_depart = j[1].strip()
+                realm_name = j[2].strip()
+                usernames_dest = j[3].strip().split(',')
+                message = " ".join(j[4:])
+                logging.warning("RECVGROUPREALM: received message from {} to {} in realm {}".format(
+                    username_depart, usernames_dest, realm_name))
+                return self.recv_group_realm_message(realm_name, username_depart, usernames_dest, message, data)
+
+            elif command == 'sendgroupfilerealm':
                 sessionid = j[1].strip()
-                realm_id = j[2].strip()
-                usernamesto = j[3].strip().split(',')
-                filepath = j[4].strip()
+                realm_name = j[2].strip()
+                usernames_dest = j[3].strip().split(',')
+                file_path = j[4].strip()
                 encoded_file = j[5].strip()
-                usernamefrom = self.sessions[sessionid]['username']
-                logging.warning("SENDGROUPFILEREALM: session {} send file from {} to {} in realm {}".format(
-                    sessionid, usernamefrom, usernamesto, realm_id))
-                return self.send_group_file_realm(sessionid, realm_id, usernamefrom, usernamesto, filepath, encoded_file, data)
-            elif (command == 'recvgroupfilerealm'):
-                usernamefrom = j[1].strip()
-                realm_id = j[2].strip()
-                usernamesto = j[3].strip().split(',')
-                filepath = j[4].strip()
+                username_depart = self.sessions[sessionid]['username']
+                logging.warning("SENDGROUPFILEREALM: session {} sends a file from {} to {} in realm {}".format(
+                    sessionid, username_depart, usernames_dest, realm_name))
+                return self.send_group_file_realm(sessionid, realm_name, username_depart, usernames_dest, file_path, encoded_file, data)
+
+            elif command == 'recvgroupfilerealm':
+                username_depart = j[1].strip()
+                realm_name = j[2].strip()
+                usernames_dest = j[3].strip().split(',')
+                file_path = j[4].strip()
                 encoded_file = j[5].strip()
-                logging.warning("SENDGROUPFILEREALM: recieve file from {} to {} in realm {}".format(
-                    usernamefrom, usernamesto, realm_id))
-                return self.recv_group_file_realm(realm_id, usernamefrom, usernamesto, filepath, encoded_file, data)
-            elif (command == 'getrealminbox'):
+                logging.warning("RECVGROUPFILEREALM: received file from {} to {} in realm {}".format(
+                    username_depart, usernames_dest, realm_name))
+                return self.recv_group_file_realm(realm_name, username_depart, usernames_dest, file_path, encoded_file, data)
+
+            elif command == 'getrealminbox':
                 sessionid = j[1].strip()
-                realmid = j[2].strip()
+                realm_name = j[2].strip()
                 username = self.sessions[sessionid]['username']
-                logging.warning(
-                    "GETREALMINBOX: {} from realm {}".format(sessionid, realmid))
-                return self.get_realm_inbox(username, realmid)
-            elif (command == 'getrealmchat'):
-                realmid = j[1].strip()
+                logging.warning("GETREALMINBOX: {} from realm {}".format(
+                    sessionid, realm_name))
+                return self.get_realm_inbox(username, realm_name)
+
+            elif command == 'getrealmchat':
+                realm_name = j[1].strip()
                 username = j[2].strip()
-                logging.warning("GETREALMCHAT: from realm {}".format(realmid))
-                return self.get_realm_chat(realmid, username)
+                logging.warning("GETREALMCHAT: from realm {}".format(realm_name))
+                return self.get_realm_chat(realm_name, username)
+
+            
             else:
                 print(command)
                 return {'status': 'ERROR', 'message': '**Protocol Tidak Benar'}
+            
         except KeyError:
             return {'status': 'ERROR', 'message': 'Informasi tidak ditemukan'}
         except IndexError:
@@ -595,58 +638,73 @@ class Chat:
     # EndRegion ========================== Reply Message =============================
 
     # Region ============================= Add Realm =============================
-    def add_realm(self, realm_id, target_realm_address, target_realm_port):
-        if realm_id in self.realms:
+    def add_realm(self, realm_name, ipaddress_dest, port_dest):
+        if realm_name in self.realms:
             return {'status': 'ERROR', 'message': 'Realm already exists'}
 
-        self.realms[realm_id] = RealmCommunicationThread(
-            self, target_realm_address, target_realm_port)
-        self.realms[realm_id].start()
+        realm_thread = RealmCommunicationThread(self, ipaddress_dest, port_dest)
+        self.realms[realm_name] = realm_thread
 
-        return {'status': 'OK', 'message': 'Realm added successfully'}
+        if realm_thread.connect():
+            realm_thread.start()
+            return {'status': 'OK', 'message': 'Realm added and connected successfully'}
+        else:
+            del self.realms[realm_name]
+            return {'status': 'ERROR', 'message': 'Failed to connect to the realm'}
+
     # EndRegion ========================== Add Realm =============================
 
     # Region ============================= Recv Realm =============================
-    def recv_realm(self, realm_id, realm_dest_address, realm_dest_port, data):
-        if realm_id not in self.realms:
+    def recv_realm(self, realm_name, ipaddress_dest, port_dest, data):
+        if realm_name in self.realms:
+            return {'status': 'ERROR', 'message': 'Realm already exists'}
+
+        realm_thread = RealmCommunicationThread(self, ipaddress_dest, port_dest)
+        self.realms[realm_name] = realm_thread
+
+        if realm_thread.connect():
+            return {'status': 'OK', 'message': 'Realm received and connected successfully'}
+        else:
+            del self.realms[realm_name]
+            return {'status': 'ERROR', 'message': 'Failed to connect to the realm'}
+    # EndRegion ========================== Recv Realm =============================
+   
+    # Region ============================= Remove Realm =============================
+    def remove_realm(self, realm_name):
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm does not exist'}
 
-        realm_thread = RealmCommunicationThread(
-            self, realm_dest_address, realm_dest_port)
-        self.realms[realm_id] = realm_thread
+        realm_thread = self.realms[realm_name]
+        realm_thread.stop()
+        del self.realms[realm_name]
 
-        return {'status': 'OK'}
-    # EndRegion ========================== Recv Realm =============================
-    
+        return {'status': 'OK', 'message': 'Realm removed successfully'}
+    # EndRegion ========================== Remove Realm =============================
+
     # Region ============================= Send Realm Message =============================
-    def send_realm_message(self, sessionid, realm_id, username_to, message):
+    def send_realm_message(self, sessionid, realm_name, username_dest, message):
         if sessionid not in self.sessions:
             return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
-        if realm_id not in self.realms:
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ada'}
-        username_from = self.sessions[sessionid]['username']
+        username_depart = self.sessions[sessionid]['username']
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         message_data = {
-            'msg_from': username_from,
-            'msg_to': username_to,
+            'msg_from': username_depart,
+            'msg_to': username_dest,
             'msg': message,
             'timestamp': timestamp
         }
-        realm_thread = self.realms[realm_id]
+        realm_thread = self.realms[realm_name]
         realm_thread.put(message_data)
-        realm_thread.queue.put(message_data)
         return {'status': 'OK', 'message': 'Message Sent to Realm'}
-
-
-
     # EndRegion ========================== Send Realm Message =============================
 
     # Region ============================= Recv Realm Message =============================
-
-    def recv_realm_message(self, realm_id, username_from, username_dest, message, data):
-        if realm_id not in self.realms:
+    def recv_realm_message(self, realm_name, username_depart, username_dest, message, data):
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
-        s_fr = self.get_user(username_from)
+        s_fr = self.get_user(username_depart)
         s_to = self.get_user(username_dest)
         if s_fr is False or s_to is False:
             return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
@@ -657,34 +715,34 @@ class Chat:
             'msg': message,
             'timestamp': timestamp
         }
-        realm_thread = self.realms[realm_id]
+        realm_thread = self.realms[realm_name]
         realm_thread.put(message_data)
         return {'status': 'OK', 'message': 'Message Sent to Realm'}
     # EndRegion ========================== Recv Realm Message =============================
     
-    # Region ============================= Send File to Realm =============================
-    def send_file_realm(self, sessionid, realm_id, username_from, username_dest, filepath, encoded_file, data):
+   # Region ============================= Send File to Realm =============================
+    def send_file_realm(self, sessionid, realm_name, username_depart, username_dest, file_path, encoded_file, data):
         if sessionid not in self.sessions:
             return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
-        if realm_id not in self.realms:
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
-        s_fr = self.get_user(username_from)
+        s_fr = self.get_user(username_depart)
         s_to = self.get_user(username_dest)
         if s_fr is False or s_to is False:
             return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
 
-        filename = os.path.basename(filepath)
+        filename = os.path.basename(file_path)
         message = {
             'msg_from': s_fr['nama'],
             'msg_to': s_to['nama'],
             'file_name': filename,
             'file_content': encoded_file
         }
-        realm_thread = self.realms[realm_id]
+        realm_thread = self.realms[realm_name]
         realm_thread.put(message)
 
         now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        folder_name = f"{now}_{username_from}_{username_dest}_{filename}"
+        folder_name = f"{now}_{username_depart}_{username_dest}_{filename}"
         folder_path = join(dirname(realpath(__file__)), 'files/')
         os.makedirs(folder_path, exist_ok=True)
         folder_path = join(folder_path, folder_name)
@@ -693,42 +751,55 @@ class Chat:
         if 'b' in encoded_file[0]:
             msg = encoded_file[2:-1]
             with open(file_destination, "wb") as fh:
-                fh.write(base64.b64decode(msg))
+                fh.write(msg)
         else:
-            tail = encoded_file.split()
-        print(file_destination)
-        j = data.split()
-        j[0] = "recvfilerealm"
-        j[1] = username_from
-        data = ' '.join(j)
-        data += "\r\n"
-        realm_thread.sendstring(data)
+            with open(file_destination, "w") as fh:
+                fh.write(encoded_file)
 
         return {'status': 'OK', 'message': 'File Sent to Realm'}
-
     # EndRegion ========================== Send File to Realm =============================
 
+    def validate_file_path(file_path):
+        if not os.path.exists(file_path):
+            return False
+        return True
+
+
+    def validate_encoded_file(encoded_file):
+        try:
+            base64.b64decode(encoded_file)
+            return True
+        except:
+            return False
+
     # Region ============================= Recv File from Realm =============================
-    def recv_file_realm(self, realm_id, username_from, username_dest, filepath, encoded_file, data):
-        if realm_id not in self.realms:
+    def recv_file_realm(self, realm_name, username_depart, username_dest, file_path, encoded_file, data):
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
-        s_fr = self.get_user(username_from)
+        s_fr = self.get_user(username_depart)
         s_to = self.get_user(username_dest)
         if s_fr is False or s_to is False:
             return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
 
-        filename = os.path.basename(filepath)
+        filename = os.path.basename(file_path)
+        # Validate inputs
+        if not self.validate_file_path(file_path):
+            return {'status': 'ERROR', 'message': 'Invalid file path'}
+
+        if not self.validate_encoded_file(encoded_file):
+            return {'status': 'ERROR', 'message': 'Invalid encoded file'}
+        
         message = {
             'msg_from': s_fr['nama'],
             'msg_to': s_to['nama'],
             'file_name': filename,
             'file_content': encoded_file
         }
-        realm_thread = self.realms[realm_id]
+        realm_thread = self.realms[realm_name]
         realm_thread.put(message)
 
         now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        folder_name = f"{now}_{username_from}_{username_dest}_{filename}"
+        folder_name = f"{now}_{username_depart}_{username_dest}_{filename}"
         folder_path = join(dirname(realpath(__file__)), 'files/')
         os.makedirs(folder_path, exist_ok=True)
         folder_path = join(folder_path, folder_name)
@@ -741,15 +812,14 @@ class Chat:
         else:
             tail = encoded_file.split()
 
-        return {'status': 'OK', 'message': 'File Received to Realm'}
-
+        return {'status': 'OK', 'message': 'File Received from Realm'}
     # EndRegion ========================== Recv File from Realm =============================
     
     # Region ============================= Send Realm Group Message =============================
-    def send_group_realm_message(self, sessionid, realm_id, group_usernames, message):
+    def send_group_realm_message(self, sessionid, realm_name, group_usernames, message):
         if sessionid not in self.sessions:
             return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
-        if realm_id not in self.realms:
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ada'}
         username_from = self.sessions[sessionid]['username']
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -760,18 +830,15 @@ class Chat:
                 'msg': message,
                 'timestamp': timestamp
             }
-            realm_thread = self.realms[realm_id]
+            realm_thread = self.realms[realm_name]
             realm_thread.put(message_data)
             realm_thread.queue.put(message_data)
         return {'status': 'OK', 'message': 'Message Sent to Group in Realm'}
-
-
     # EndRegion ========================== Send Realm Group Message =============================
 
     # Region ============================= Recv Realm Group Message =============================
-
-    def recv_group_realm_message(self, realm_id, username_from, usernames_to, message, data):
-        if realm_id not in self.realms:
+    def recv_group_realm_message(self, realm_name, username_from, usernames_to, message, data):
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
         s_fr = self.get_user(username_from)
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -783,25 +850,24 @@ class Chat:
                 'msg': message,
                 'timestamp': timestamp
             }
-            realm_thread = self.realms[realm_id]
+            realm_thread = self.realms[realm_name]
             realm_thread.put(message_data)
         return {'status': 'OK', 'message': 'Message Sent to Group in Realm'}
-
     # EndRegion ========================== Recv Realm Group Message =============================
 
     # Region ============================= Send Realm Group File =============================
-    def send_group_file_realm(self, sessionid, realm_id, username_from, usernames_to, filepath, encoded_file, data):
+    def send_group_file_realm(self, sessionid, realm_name, username_depart, usernames_dest, file_path, encoded_file, data):
         if sessionid not in self.sessions:
             return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
-        if realm_id not in self.realms:
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
-        s_fr = self.get_user(username_from)
+        s_fr = self.get_user(username_depart)
 
         if s_fr == False:
             return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
 
-        filename = os.path.basename(filepath)
-        for username_to in usernames_to:
+        filename = os.path.basename(file_path)
+        for username_to in usernames_dest:
             s_to = self.get_user(username_to)
             message_data = {
                 'msg_from': s_fr['nama'],
@@ -809,11 +875,11 @@ class Chat:
                 'file_name': filename,
                 'file_content': encoded_file
             }
-            realm_thread = self.realms[realm_id]
+            realm_thread = self.realms[realm_name]
             realm_thread.put(message_data)
 
             now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-            folder_name = f"{now}_{username_from}_{username_to}_{filename}"
+            folder_name = f"{now}_{username_depart}_{username_to}_{filename}"
             folder_path = join(dirname(realpath(__file__)), 'files/')
             os.makedirs(folder_path, exist_ok=True)
             folder_path = join(folder_path, folder_name)
@@ -829,24 +895,23 @@ class Chat:
 
         j = data.split()
         j[0] = "recvgroupfilerealm"
-        j[1] = username_from
+        j[1] = username_depart
         data = ' '.join(j)
         data += "\r\n"
         realm_thread.sendstring(data)
         return {'status': 'OK', 'message': 'Message Sent to Group in Realm'}
-
     # EndRegion ========================== Send Realm Group File =============================
 
     # Region ============================= Recv Realm Group File =============================
-    def recv_group_file_realm(self, realm_id, username_from, usernames_to, filepath, encoded_file, data):
-        if realm_id not in self.realms:
+    def recv_group_file_realm(self, realm_name, username_from, usernames_to, file_path, encoded_file, data):
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ditemukan'}
         s_fr = self.get_user(username_from)
 
         if s_fr == False:
             return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
 
-        filename = os.path.basename(filepath)
+        filename = os.path.basename(file_path)
         for username_to in usernames_to:
             s_to = self.get_user(username_to)
             message_data = {
@@ -855,7 +920,7 @@ class Chat:
                 'file_name': filename,
                 'file_content': encoded_file
             }
-            realm_thread = self.realms[realm_id]
+            realm_thread = self.realms[realm_name]
             realm_thread.put(message_data)
 
             now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -874,24 +939,23 @@ class Chat:
                 tail = encoded_file.split()
 
         return {'status': 'OK', 'message': 'Message Sent to Group in Realm'}
-
     # EndRegion ========================== Recv Realm Group File =============================
 
     # Region ============================= Get Realm Inbox =============================
-    def get_realm_inbox(self, sessionid, realm_id):
+    def get_realm_inbox(self, sessionid, realm_name):
         if sessionid not in self.sessions:
             return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
-        if realm_id not in self.realms:
+        if realm_name not in self.realms:
             return {'status': 'ERROR', 'message': 'Realm Tidak Ada'}
-        
+
         username = self.sessions[sessionid]['username']
         msgs = []
-        
-        while not self.realms[realm_id].empty():
-            msgs.append(self.realms[realm_id].get_nowait())
-        
-        return {'status': 'OK', 'messages': msgs}
 
+        while not self.realms[realm_name].empty():
+            msgs.append(self.realms[realm_name].get_nowait())
+
+        return {'status': 'OK', 'messages': msgs}
+    # EndRegion ========================== Get Realm Inbox =============================
 
 
 if __name__ == "__main__":
