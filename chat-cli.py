@@ -48,6 +48,22 @@ class ChatClient:
                 usernamesto = j[1].strip()
                 filepath = j[2].strip()
                 return self.send_group_file(usernamesto, filepath)
+            elif command == 'getpresence':
+                username = j[1].strip()
+                return self.get_presence(username)
+            elif command == 'deletelastmessage':
+                username = j[1].strip()
+            elif command == 'forwardmessage':
+                source_username = j[1].strip()
+                destination_username = j[2].strip()
+                result = self.forward_message(
+                    source_username, destination_username)
+                return result
+            elif command == 'replymessage':
+                username = j[1].strip()
+                message = ' '.join(j[2:]).strip()
+                result = self.reply_message(username, message)
+                return result
             elif (command == 'sendprivaterealm'):
                 realmid = j[1].strip()
                 username_to = j[2].strip()
