@@ -1,0 +1,37 @@
+{
+    "messi": {
+        "nama": "Lionel Messi",
+        "negara": "Argentina",
+        "password": "surabaya",
+        "incoming": {},
+        "outgoing": {}
+    },
+    "henderson": {
+        "nama": "Jordan Henderson",
+        "negara": "Inggris",
+        "password": "surabaya",
+        "incoming": {},
+        "outgoing": {}
+    },
+    "lineker": {
+        "nama": "Gary Lineker",
+        "negara": "Inggris",
+        "password": "surabaya",
+        "incoming": {},
+        "outgoing": {}
+    },
+    "titus": {
+        "nama": "Titus Testing",
+        "negara": "Indonesia",
+        "password": "12345678",
+        "incoming": {},
+        "outgoing": {}
+    },
+    "farros": {
+        "nama": "Farros",
+        "negara": "Hilmi",
+        "password": "farros123",
+        "incoming": {},
+        "outgoing": {}
+    }
+}
