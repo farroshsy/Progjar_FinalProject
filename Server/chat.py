@@ -132,6 +132,13 @@ class Chat:
                 username = self.sessions[sessionid]['username']
                 logging.warning("INBOX: {}" . format(sessionid))
                 return self.get_inbox(username)
+            
+            elif command == 'notification':
+                sessionid = j[1].strip()
+                username = self.sessions[sessionid]['username']
+                logging.warning("NOTIFICATION: {}".format(sessionid))
+                return self.notification(sessionid)
+
            
             elif (command == 'sendgroup'):
                 sessionid = j[1].strip()
@@ -455,13 +462,38 @@ class Chat:
 
         for user in incoming:
             msgs[user] = []
-
             while not incoming[user].empty():
-                msgs[user].append(incoming[user].get_nowait())
+                message = incoming[user].get()
+                msgs[user].append(message)
+
+                message['read'] = True
 
         return {'status': 'OK', 'messages': msgs}
 
+
     # EndRegion ========================== Get Inbox =============================
+    
+    # Region ============================= Notification =========================
+    def notification(self, sessionid):
+        if sessionid not in self.sessions:
+            return {'status': 'ERROR', 'message': 'Session Tidak Ditemukan'}
+
+        username = self.sessions[sessionid]['username']
+        user = self.get_user(username)
+
+        if not user:
+            return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
+
+        inbox = user.setdefault('inbox', [])
+        unread_messages = []
+
+        for message in inbox:
+            if not message['read']:
+                unread_messages.append(message)
+                message['read'] = True
+
+        return {'status': 'OK', 'unread_messages': unread_messages}
+    # EndRegion ============================= Notification =========================
 
     # Region ============================= Send File to User =============================
     def send_file(self, sessionid, username_from, username_dest, filepath, encoded_file):

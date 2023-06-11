@@ -2,6 +2,11 @@ import socket
 import os
 import json
 import base64
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Server'))
+
+from chat import Chat
 
 TARGET_IP = "localhost"
 TARGET_PORT = 9999
@@ -404,24 +409,56 @@ class ChatClient:
                     for emoji, replacement in emoji_mapping.items():
                         msg['msg'] = msg['msg'].replace(emoji, replacement)
 
-            return messages
+            unread_messages = self.get_unread_messages(messages)
+            if unread_messages:
+                return "New Notifications:\n{}".format(unread_messages)
+            else:
+                return "No new notifications"
         else:
-            return "Error, {}".format(result['message'])
+            return "Error: {}".format(result['message'])
+    def notification(self, messages):
+        unread_messages = {}
+        for user, msgs in messages.items():
+            unread_msgs = [msg for msg in msgs if not msg.get('read', False)]
+            if unread_msgs:
+                unread_messages[user] = unread_msgs
+        return unread_messages
+
         
     def get_realm_inbox(self, realm_name):
         if self.token_id == "":
             return "Error, not authorized"
+
         string = "get_realm_inbox {} {}\r\n".format(self.token_id, realm_name)
         print("Sending: " + string)
         result = self.send_string(string)
         print("Received: " + str(result))
+
         if result['status'] == 'OK':
-            return "Message received from realm {}: {}".format(realm_name, result['messages'])
+            messages = result['messages']
+            unread_messages = self.get_unread_messages(messages)  # Get unread messages using the get_unread_messages method
+            if not unread_messages:
+                return "No new notifications"
+
+            output = "New Notifications from realm {}:\n".format(realm_name)
+            for user, msgs in unread_messages.items():
+                output += "User: {}\n".format(user)
+                for msg in msgs:
+                    output += "Message: {}\n".format(msg["msg"])
+
+            # Handle new message received from realm separately
+            new_messages = result['new_messages']
+            if new_messages:
+                output += "New Message from Realm {}: {}\n".format(realm_name, new_messages)
+
+            return output
         else:
             return "Error: {}".format(result['message'])
 
+
 if __name__ == "__main__":
     cc = ChatClient()
+    j = Chat()
     while True:
         print("\n")
         cmdline = input("Command {}:" . format(cc.tokenid))
