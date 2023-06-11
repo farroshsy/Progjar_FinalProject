@@ -28,6 +28,7 @@ Documentation by Kelompok 2.
 3. [SENDGROUPREALM - Group Messaging](#sendgrouprealm---group-messaging)
 4. [SENDFILEREALM - Private Send/Receive File](#sendfilerealm---private-sendreceive-file)
 5. [SENDGROUPFILE - Group Send/Receive File](#sendgroupfile---group-sendreceive-file-1)
+6. [GETREALMINBOX - Inbox](#getrealminbox---inbox)
 
 <br />
 
@@ -93,6 +94,8 @@ AUTH_FAIL <error_message>
 
 ### `SEND` - Private Messaging
 
+Merupakan command yang digunakan untuk mengirimkan pesan secara private kepada user lain.
+
 #### Command
 
 ```
@@ -103,6 +106,15 @@ SEND <username_dest> <message>
 
 ```
 SEND messi apa kabar si
+```
+
+Dalam pesan ini, dapat dikirimkan emoji untuk membuatnya terlihat lebih menarik. Kode yang dapat digunakan untuk membuat emoji dapat dilihat sebagai berikut.
+
+```
+":)": "🙂"
+":(": "☹️"
+":D": "😁"
+"T_T": "😭"
 ```
 
 <br />
@@ -326,7 +338,9 @@ SENDGROUPFILE <realm_name> <username_dest 1>, <username_dest 2>, ... , <username
 SENDGROUPFILE realm2 messi, henderson, lineker gambar2.jpg
 ```
 
-### Inbox
+<br />
+
+### `GETREALMINBOX` - Inbox
 
 #### Command
 
