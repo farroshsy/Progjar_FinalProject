@@ -4,7 +4,7 @@ import json
 import base64
 
 TARGET_IP = "0.tcp.ap.ngrok.io"
-TARGET_PORT = 18552
+TARGET_PORT = 19224 # Ganti sesuai port dari ngrok
 
 
 class ChatClient:
@@ -18,7 +18,13 @@ class ChatClient:
         j = cmdline.split(" ")
         try:
             command = j[0].strip()
-            if (command == 'auth'):
+            if command == 'register':
+                username = j[1].strip()
+                password = j[2].strip()
+                name = j[3].strip()
+                country = j[4].strip()
+                return self.register_user(username, password, name, country)
+            elif (command == 'auth'):
                 username = j[1].strip()
                 password = j[2].strip()
                 return self.login(username, password)
@@ -92,6 +98,17 @@ class ChatClient:
         except:
             self.sock.close()
             return {'status': 'ERROR', 'message': 'Gagal'}
+        
+    def register_user(self, username, password, name, country):
+        if self.tokenid != "":
+            return "Error, already logged in"
+        
+        string = "register {} {} {} {} \r\n".format(username, password, name, country)
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return "User registered successfully"
+        else:
+            return "Error, {}".format(result['message'])
 
     def login(self, username, password):
         string = "auth {} {} \r\n" . format(username, password)
