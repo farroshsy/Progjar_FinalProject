@@ -50,7 +50,7 @@ class Chat:
     # Region ============================= Load User Data =============================
     def load_user_data(self):
         try:
-            with open('./Server/db/user.json', 'r') as file:
+            with open('db/user.json', 'r') as file:
                 self.users = json.load(file)
         except FileNotFoundError:
             self.users = {}
