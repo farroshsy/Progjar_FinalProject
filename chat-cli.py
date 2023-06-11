@@ -3,6 +3,9 @@ import os
 import json
 import base64
 
+from client.Register.register_user import register_user
+from client.Login.login import login
+
 TARGET_IP = "localhost"
 TARGET_PORT = 9999
 
@@ -23,11 +26,11 @@ class ChatClient:
                 password = j[2].strip()
                 name = j[3].strip()
                 country = j[4].strip()
-                return self.register_user(username, password, name, country)
+                return register_user(username, password, name, country, self)
             elif (command == 'auth'):
                 username = j[1].strip()
                 password = j[2].strip()
-                return self.login(username, password)
+                return login(self.sock, username, password)
             elif (command == 'send'):
                 usernameto = j[1].strip()
                 message = ""
@@ -97,7 +100,7 @@ class ChatClient:
                 return "*Maaf, command tidak benar"
         except IndexError:
             return "-Maaf, command tidak benar"
-
+        
     def sendstring(self, string):
         try:
             self.sock.sendall(string.encode())
@@ -114,26 +117,6 @@ class ChatClient:
         except:
             self.sock.close()
             return {'status': 'ERROR', 'message': 'Gagal'}
-        
-    def register_user(self, username, password, name, country):
-        if self.tokenid != "":
-            return "Error, already logged in"
-        
-        string = "register {} {} {} {} \r\n".format(username, password, name, country)
-        result = self.sendstring(string)
-        if result['status'] == 'OK':
-            return "User registered successfully"
-        else:
-            return "Error, {}".format(result['message'])
-
-    def login(self, username, password):
-        string = "auth {} {} \r\n" . format(username, password)
-        result = self.sendstring(string)
-        if result['status'] == 'OK':
-            self.tokenid = result['tokenid']
-            return "username {} logged in, token {} " .format(username, self.tokenid)
-        else:
-            return "Error, {}" . format(result['message'])
 
     def add_realm(self, realmid, realm_address, realm_port):
         if (self.tokenid==""):

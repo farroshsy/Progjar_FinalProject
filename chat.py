@@ -10,6 +10,8 @@ import socket
 from datetime import datetime
 import base64
 
+from server.Login.login import autentikasi_user
+
 
 class RealmCommunicationThread(threading.Thread):
     def __init__(self, chat, target_realm_address, target_realm_port):
@@ -80,12 +82,12 @@ class Chat:
                 country = j[4].strip()
                 logging.warning("REGISTER: register {} {} {} {}" . format(username, password, name, country))
                 return self.register_user(username, password, name, country)
-            elif (command == 'auth'):
+            elif command == 'auth':
                 username = j[1].strip()
                 password = j[2].strip()
-                logging.warning(
-                    "AUTH: auth {} {}" . format(username, password))
-                return self.autentikasi_user(username, password)
+                logging.warning("AUTH: auth {} {}".format(username, password))
+                result = autentikasi_user(self.users, self.sessions, self.connectedUsers, username, password)
+                return result
             elif (command == 'send'):
                 sessionid = j[1].strip()
                 usernameto = j[2].strip()
@@ -311,18 +313,6 @@ class Chat:
 
         return {'status': 'OK', 'message': 'User registered successfully'}
     # EndRegion ========================== Register New User =============================
-
-    # Region ============================= Login User =============================
-    def autentikasi_user(self, username, password):
-        if username not in self.users:
-            return {'status': 'ERROR', 'message': 'User Tidak Ada'}
-        if self.users[username]['password'] != password:
-            return {'status': 'ERROR', 'message': 'Password Salah'}
-        tokenid = str(uuid.uuid4())
-        self.sessions[tokenid] = {'username': username, 'userdetail': self.users[username]}
-        self.connectedUsers[username] = True
-        return {'status': 'OK', 'tokenid': tokenid}
-    # EndRegion ========================== Login User =============================
 
     # Region ============================= Get User =============================
     def get_user(self, username):
