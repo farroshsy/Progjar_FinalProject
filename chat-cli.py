@@ -3,8 +3,8 @@ import os
 import json
 import base64
 
-TARGET_IP = "0.tcp.ap.ngrok.io"
-TARGET_PORT = 19224 # Ganti sesuai port dari ngrok
+TARGET_IP = "localhost"
+TARGET_PORT = 9999
 
 
 class ChatClient:
@@ -238,6 +238,14 @@ class ChatClient:
             return "file sent to {}" . format(usernames_to)
         else:
             return "Error, {}" . format(result['message'])
+        
+    def get_presence(self, username):
+        string = "getpresence {}\r\n".format(username)
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return result['message']
+        else:
+            return "Error, {}".format(result['message'])
 
     def send_group_realm_message(self, realmid, usernames_to, message):
         if self.tokenid == "":

@@ -189,7 +189,7 @@ GETPRESENCE messi
 
 ```
 #Jika berhasil
-PRESENCE_STATUS <username> <online_status>
+User <username> is currently <online_status>
 ```
 
 <br />

@@ -43,6 +43,7 @@ class Chat:
     def __init__(self):
         self.sessions = {}
         self.users = {}
+        self.connectedUsers = {}
         self.realms = {}
         self.load_user_data() # Load user data from db/user.json file
 
@@ -313,13 +314,13 @@ class Chat:
 
     # Region ============================= Login User =============================
     def autentikasi_user(self, username, password):
-        if (username not in self.users):
+        if username not in self.users:
             return {'status': 'ERROR', 'message': 'User Tidak Ada'}
-        if (self.users[username]['password'] != password):
+        if self.users[username]['password'] != password:
             return {'status': 'ERROR', 'message': 'Password Salah'}
         tokenid = str(uuid.uuid4())
-        self.sessions[tokenid] = {
-            'username': username, 'userdetail': self.users[username]}
+        self.sessions[tokenid] = {'username': username, 'userdetail': self.users[username]}
+        self.connectedUsers[username] = True
         return {'status': 'OK', 'tokenid': tokenid}
     # EndRegion ========================== Login User =============================
 
@@ -518,10 +519,13 @@ class Chat:
     def get_presence(self, username):
         if username in self.users:
             user_data = self.users[username]
-            if 'presence' in user_data:
-                return {'status': 'OK', 'presence': user_data['presence']}
+            if username in self.connectedUsers:
+                presence = 'online'
+            elif 'presence' in user_data:
+                presence = user_data['presence']
             else:
-                return {'status': 'OK', 'presence': 'offline'}
+                presence = 'offline'
+            return {'status': 'OK', 'message': 'User {} is currently {}'  . format(username, presence)}
         else:
             return {'status': 'ERROR', 'message': 'User tidak ditemukan'}
     # EndRegion ========================== Get Presence Status =============================
