@@ -120,6 +120,11 @@ class Chat:
                 logging.warning("SENDFILE: session {} send file from {} to {}" . format(
                     sessionid, usernamefrom, usernameto))
                 return self.send_file(sessionid, usernamefrom, usernameto, filepath, encoded_file)
+            elif (command == 'getfile'):
+                sessionid = j[1].strip()
+                username = self.sessions[sessionid]['username']
+                logging.warning("INBOX: {}" . format(sessionid))
+                return self.get_inbox(username)
             elif (command == 'sendgroupfile'):
                 sessionid = j[1].strip()
                 usernamesto = j[2].strip().split(',')
@@ -413,6 +418,7 @@ class Chat:
                 msgs[user].append(incoming[user].get_nowait())
 
         return {'status': 'OK', 'messages': msgs}
+    
 
     # EndRegion ========================== Get Inbox =============================
 
@@ -440,7 +446,9 @@ class Chat:
 
         outqueue_sender.setdefault(username_from, Queue()).put(json.dumps(message))
         inqueue_receiver.setdefault(
-            username_from, Queue()).put(json.dumps(message))
+            username_from, Queue()).put(filename)
+        inqueue_receiver.setdefault(
+            username_from, Queue()).put(encoded_file)
 
         # Simpan file ke folder dengan nama yang mencerminkan waktu pengiriman dan nama asli file
         now = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -460,6 +468,7 @@ class Chat:
             tail = encoded_file.split()
 
         return {'status': 'OK', 'message': 'File Sent'} 
+    
     # EndRegion ========================== Send File to User =============================
 
     # Region ============================= Send File to Group =============================

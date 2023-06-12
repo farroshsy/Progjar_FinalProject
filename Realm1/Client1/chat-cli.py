@@ -38,6 +38,8 @@ class ChatClient:
                 usernameto = j[1].strip()
                 filepath = j[2].strip()
                 return self.send_file(usernameto, filepath)
+            elif (command == 'getfile'):
+                return self.get_file()
             elif (command == 'sendgroup'):
                 usernamesto = j[1].strip()
                 message = ""
@@ -162,6 +164,26 @@ class ChatClient:
         result = self.sendstring(string)
         if result['status'] == 'OK':
             return "file sent to {}" . format(usernameto)
+        else:
+            return "Error, {}" . format(result['message'])
+        
+    def get_file(self):
+        if (self.tokenid == ""):
+            return "Error, not authorized"
+        string = "inbox {} \r\n" . format(self.tokenid)
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            msg = result['messages']
+            user_from = next(iter(msg))
+            file_name = msg[user_from][0]
+            encoded_file = msg[user_from][1]
+            
+            if 'b' in encoded_file[0]:
+                with open(file_name, "wb") as fh:
+                    fh.write(base64.b64decode(encoded_file[2:-1]))
+            else:     
+                tail = encoded_file.split()
+            return "{} berhasil diterima" . format(file_name)
         else:
             return "Error, {}" . format(result['message'])
         
