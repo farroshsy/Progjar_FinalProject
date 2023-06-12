@@ -222,7 +222,7 @@ DELETELASTMESSAGE
 
 <br />
 
-### `FORWARDMESSAGE` - Forward Message (Belum Dicoba)
+### `FORWARDMESSAGE` - Forward Message
 
 #### Command
 
@@ -239,7 +239,7 @@ FORWARDMESSAGE messi 11062023M
 
 <br />
 
-### `REPLYMESSAGE` - Reply Message (Belum Dicoba)
+### `REPLYMESSAGE` - Reply Message 
 
 #### Command
 
@@ -253,6 +253,22 @@ REPLYMESSAGE <message_id> <reply_message>
 REPLYMESSAGE 11062023M baik si
 
 ```
+
+### `NOTIFICATION` - Notification
+
+#### Command
+
+```
+NOTIFICATION
+```
+
+#### Example
+
+```
+NOTIFICATION 
+```
+
+
 
 <br />
 
