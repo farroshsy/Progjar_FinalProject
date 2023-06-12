@@ -165,7 +165,7 @@ class Chat:
                 sessionid = j[1].strip()
                 username = self.sessions[sessionid]['username']
                 logging.warning("INBOX: {}" . format(sessionid))
-                return self.get_inbox(username)
+                return self.get_file(username)
             
             elif (command == 'sendgroupfile'):
                 sessionid = j[1].strip()
@@ -473,6 +473,23 @@ class Chat:
                 msgs[user].append(message)
 
                 message['read'] = True
+
+        return {'status': 'OK', 'messages': msgs}
+    
+    def get_file(self, username):
+        user = self.get_user(username)
+
+        if not user:
+            return {'status': 'ERROR', 'message': 'User Tidak Ditemukan'}
+
+        incoming = user.setdefault('incoming', {})
+        msgs = {}
+
+        for user in incoming:
+            msgs[user] = []
+            while not incoming[user].empty():
+                message = incoming[user].get()
+                msgs[user].append(message)
 
         return {'status': 'OK', 'messages': msgs}
 

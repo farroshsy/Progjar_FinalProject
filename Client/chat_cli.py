@@ -47,6 +47,9 @@ class ChatClient:
                 filepath = j[2].strip()
                 return self.send_file(usernameto, filepath)
             
+            elif (command == 'getfile'):
+                return self.get_file()
+            
             elif command == 'creategroup':
                 group_name = j[1].strip()
                 return self.create_group(group_name)
@@ -201,7 +204,7 @@ class ChatClient:
     def get_file(self):
         if (self.tokenid == ""):
             return "Error, not authorized"
-        string = "inbox {} \r\n" . format(self.tokenid)
+        string = "getfile {} \r\n" . format(self.tokenid)
         result = self.sendstring(string)
         if result['status'] == 'OK':
             msg = result['messages']
