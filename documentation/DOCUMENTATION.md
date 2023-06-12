@@ -13,13 +13,14 @@ Documentation by Kelompok 2.
 2. [AUTH - Login User](#auth---login-user)
 3. [SEND - Private Messaging](#private-messaging)
 4. [SENDGROUP - Group Messaging](#sendgroup---group-messaging)
-5. [SENDFILE - Private Send/Receive File](#sendfile---private-sendreceive-file)
-6. [SENDGROUPFILE - Group Send/Receive File](#sendgroupfile---group-sendreceive-file)
-7. [INBOX - Receive Messages](#inbox---receive-messages)
-8. [GETPRESENCE - Real-time Online/Offline Status](#getpresence---real-time-onlineoffline-status)
-9. [DELETE - Delete Last Message](#delete---delete-last-message)
-10. [FORWARD - Forward Message](#forwardmessage---forward-message-belum-dicoba)
-11. [REPLYMESSAGE - Reply Message](#replymessage---reply-message-belum-dicoba)
+5. [SENDFILE - Private Send/Receive File](#sendfile---private-send-file)
+6. [GETFILE - Private Receive File](#getfile---private-receive-file)
+7. [SENDGROUPFILE - Group Send/Receive File](#sendgroupfile---group-sendreceive-file)
+8. [INBOX - Receive Messages](#inbox---receive-messages)
+9. [GETPRESENCE - Real-time Online/Offline Status](#getpresence---real-time-onlineoffline-status)
+10. [DELETE - Delete Last Message](#delete---delete-last-message)
+11. [FORWARD - Forward Message](#forwardmessage---forward-message-belum-dicoba)
+12. [REPLYMESSAGE - Reply Message](#replymessage---reply-message-belum-dicoba)
 
 ### Antar Server
 
@@ -135,7 +136,7 @@ SENDGROUP messi, henderson, lineker apa kabar rekk
 
 <br />
 
-### `SENDFILE` - Private Send/Receive File
+### `SENDFILE` - Private Send File
 
 #### Command
 
@@ -147,6 +148,22 @@ SENDFILE <username_dest 1> <file_path>
 
 ```
 SENDFILE messi gambar.jpg
+
+```
+<br />
+
+### `GETFILE` - Private Receive File
+
+#### Command
+
+```
+GETFILE
+```
+
+#### Example
+
+```
+GETFILE
 ```
 
 <br />

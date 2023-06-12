@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'Server'))
 
-from chat import Chat
+# from chat import Chat
 
 TARGET_IP = "localhost"
 TARGET_PORT = 9999
@@ -195,6 +195,26 @@ class ChatClient:
         result = self.sendstring(string)
         if result['status'] == 'OK':
             return "file sent to {}" . format(usernameto)
+        else:
+            return "Error, {}" . format(result['message'])
+        
+    def get_file(self):
+        if (self.tokenid == ""):
+            return "Error, not authorized"
+        string = "inbox {} \r\n" . format(self.tokenid)
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            msg = result['messages']
+            user_from = next(iter(msg))
+            file_name = msg[user_from][0]
+            encoded_file = msg[user_from][1]
+
+            if 'b' in encoded_file[0]:
+                with open(file_name, "wb") as fh:
+                    fh.write(base64.b64decode(encoded_file[2:-1]))
+            else:     
+                tail = encoded_file.split()
+            return "{}" . format(json.dumps(msg))
         else:
             return "Error, {}" . format(result['message'])
         
@@ -458,7 +478,7 @@ class ChatClient:
 
 if __name__ == "__main__":
     cc = ChatClient()
-    j = Chat()
+    # j = Chat()
     while True:
         print("\n")
         cmdline = input("Command {}:" . format(cc.tokenid))
