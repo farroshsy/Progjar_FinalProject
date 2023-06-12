@@ -1,3 +1,4 @@
+import threading
 import flet as ft
 import json
 from chat_cli import ChatClient
@@ -11,16 +12,31 @@ class ChatRoom():
         self.chat = ft.TextField(label="Write a message...", autofocus=True, expand=True, on_submit=self.send_click)
         self.lv = ft.ListView(expand=1, spacing=10, padding=20, auto_scroll=True)
         self.send = ft.IconButton(
-                    icon=ft.icons.SEND_ROUNDED,
-                    tooltip="Send message",
-                    on_click=self.send_click,
-                )
+            icon=ft.icons.SEND_ROUNDED,
+            tooltip="Send message",
+            on_click=self.send_click,
+        )
 
         self.page = page
         self.cc = cc
         self.from_user = from_user
         self.to_user = to_user
         self.page.pubsub.subscribe(self.on_chat)
+        self.start_message_check_thread()
+
+    def on_chat(self):
+        while True:
+            inbox_result = self.cc.inbox()
+            check_inbox = json.loads(inbox_result)
+
+            if isinstance(check_inbox, dict):
+                messages = check_inbox.get(self.from_user, [])
+                for msg in messages:
+                    content = msg.get("msg")
+                    self.lv.controls.append(ft.Text(f"{self.from_user}: {content}"))
+
+            self.page.update()  # Update the page to display the pending messages
+
 
     def send_click(self, __e__):
         if not self.chat.value:
@@ -29,19 +45,15 @@ class ChatRoom():
         else:
             command = f"send {self.to_user} {self.chat.value}" 
             server_call = self.cc.proses(command)
-            self.lv.controls.append(ft.Text(f"{self.chat.value}"))
+            self.lv.controls.append(ft.Text(f"{self.from_user}: {self.chat.value}"))
 
             if "sent" in server_call:
-                self.page.pubsub.send_all(self.chat.value)
+                threading.Timer(0.1, self.on_chat).start()
 
             self.chat.value = ""
             self.chat.focus()
             self.page.update()
 
-    def on_chat(self, message): 
-        check_inbox = json.loads(self.cc.inbox())
-        self.lv.controls.append(ft.Text(f"{check_inbox[self.from_user]}"))
-        self.page.update()
 
 menu_item_username = ft.PopupMenuItem(
     icon=ft.icons.INSERT_EMOTICON, text="")
@@ -244,6 +256,7 @@ def main(page):
 
         elif troute.match("/private/:username"):
             cr = ChatRoom(page, cc, cc.username, troute.username)
+            cr.on_chat()
             page.views.append(
                 ft.View(
                     f"/private/{troute.username}",
