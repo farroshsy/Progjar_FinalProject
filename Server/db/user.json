@@ -47,5 +47,12 @@
         "password": "pwd",
         "incoming": {},
         "outgoing": {}
+    },
+    "akuntesting": {
+        "nama": "Cuma",
+        "negara": "Test",
+        "password": "pwd",
+        "incoming": {},
+        "outgoing": {}
     }
 }

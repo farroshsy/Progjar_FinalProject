@@ -102,6 +102,12 @@ class ChatClient:
                 result = self.reply_message(username, message)
                 return result
             
+            elif (command == 'addrealm'):
+                realmid = j[1].strip()
+                realm_address = j[2].strip()
+                realm_port = j[3].strip()
+                return self.add_realm(realmid, realm_address, realm_port)
+            
             elif (command == 'sendprivaterealm'):
                 realm_name = j[1].strip()
                 username_dest = j[2].strip()
@@ -383,6 +389,17 @@ class ChatClient:
             return result['message']
         else:
             return "Error, {}".format(result['message'])
+        
+    def add_realm(self, realmid, realm_address, realm_port):
+        if (self.tokenid == ""):
+            return "Error, not authorized"
+        string = "addrealm {} {} {} \r\n" . format(
+            realmid, realm_address, realm_port)
+        result = self.sendstring(string)
+        if result['status'] == 'OK':
+            return "Realm {} added" . format(realmid)
+        else:
+            return "Error, {}" . format(result['message'])
 
     def send_group_realm_message(self, realm_name, usernames_to, message):
         if self.token_id == "":
@@ -432,13 +449,10 @@ class ChatClient:
                     for emoji, replacement in emoji_mapping.items():
                         msg['msg'] = msg['msg'].replace(emoji, replacement)
 
-            unread_messages = self.get_unread_messages(messages)
-            if unread_messages:
-                return "New Notifications:\n{}".format(unread_messages)
-            else:
-                return "No new notifications"
+            return messages
         else:
-            return "Error: {}".format(result['message'])
+            return "Error, {}".format(result['message'])
+        
     def notification(self, messages):
         unread_messages = {}
         for user, msgs in messages.items():
@@ -446,7 +460,6 @@ class ChatClient:
             if unread_msgs:
                 unread_messages[user] = unread_msgs
         return unread_messages
-
         
     def get_realm_inbox(self, realm_name):
         if self.token_id == "":
