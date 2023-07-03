@@ -54,5 +54,12 @@
         "password": "pwd",
         "incoming": {},
         "outgoing": {}
+    },
+    "farros123": {
+        "nama": "Farros",
+        "negara": "Indonesia",
+        "password": "pwd",
+        "incoming": {},
+        "outgoing": {}
     }
 }

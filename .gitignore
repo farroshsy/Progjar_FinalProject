@@ -1,2 +1,4 @@
 __pycache__/
 ngrok.exe
+docker-compose-mac.yml
+docker-compose.yml

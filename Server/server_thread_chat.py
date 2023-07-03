@@ -23,13 +23,13 @@ class ProcessTheClient(threading.Thread):
             data = self.connection.recv(32)
             if data:
                 d = data.decode()
-                rcv = rcv+d
-                if rcv[-2:] == '\r\n':
+                rcv = rcv + d
+                if rcv[-2:] == "\r\n":
                     # end of command, proses string
-                    logging.warning("data dari client: {}" . format(rcv))
+                    logging.warning("data dari client: {}".format(rcv))
                     hasil = json.dumps(chatserver.proses(rcv))
-                    hasil = hasil+"\r\n\r\n"
-                    logging.warning("balas ke  client: {}" . format(hasil))
+                    hasil = hasil + "\r\n\r\n"
+                    logging.warning("balas ke  client: {}".format(hasil))
                     self.connection.sendall(hasil.encode())
                     rcv = ""
             else:
@@ -45,12 +45,12 @@ class Server(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        self.my_socket.bind(('localhost', PORT))
-        print('Server running on port {}...'.format(PORT))
+        self.my_socket.bind(("0.0.0.0", PORT))
+        print("Server running on port {}...".format(PORT))
         self.my_socket.listen(1)
         while True:
             self.connection, self.client_address = self.my_socket.accept()
-            logging.warning("connection from {}" . format(self.client_address))
+            logging.warning("connection from {}".format(self.client_address))
 
             clt = ProcessTheClient(self.connection, self.client_address)
             clt.start()
